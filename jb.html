@@ -299,6 +299,95 @@
     */
     #wrap,#state,#out{display:none}
 
+
+    /* GoldHEN ya activo: aviso y luces parpadeando SOLO en este estado. */
+    body.already-active{
+      --green:var(--yellow);
+      --green3:var(--yellow2);
+    }
+
+    body.already-active #main-container{
+      border-color:var(--yellow);
+      animation:ghBlink 1.15s ease-in-out infinite;
+    }
+
+    body.already-active #main-container::before,
+    body.already-active #main-container::after{
+      border-color:var(--yellow);
+    }
+
+    body.already-active #brand{
+      color:var(--yellow2);
+      text-shadow:0 0 12px rgba(255,212,0,.90);
+    }
+
+    body.already-active #brand::before{
+      color:#c7aa00;
+    }
+
+    body.already-active .pulse{
+      border-color:rgba(255,212,0,.72);
+    }
+
+    body.already-active #visual-indicator::before{
+      border-color:rgba(255,212,0,.36);
+    }
+
+    body.already-active #visual-indicator::after{
+      border-color:rgba(255,212,0,.15);
+    }
+
+    body.already-active .core{
+      background:var(--yellow);
+      box-shadow:0 0 20px var(--yellow),0 0 48px rgba(255,212,0,.42);
+      animation:ghCoreBlink 1.15s ease-in-out infinite;
+    }
+
+    body.already-active #exploit-title{
+      color:var(--yellow);
+      border-color:rgba(255,212,0,.75);
+      box-shadow:0 0 22px rgba(255,212,0,.20);
+      text-shadow:0 0 10px rgba(255,212,0,.65);
+    }
+
+    body.already-active #credits{
+      color:var(--yellow);
+      text-shadow:0 0 8px rgba(255,212,0,.42);
+    }
+
+    body.already-active #footer::before{
+      color:var(--yellow);
+    }
+
+    body.already-active #msg{
+      display:block;
+      color:var(--yellow);
+      background:rgba(18,15,0,.96);
+      border-color:rgba(255,212,0,.76);
+      box-shadow:0 0 28px rgba(255,212,0,.22);
+      text-shadow:0 0 10px rgba(255,212,0,.85);
+    }
+
+    @keyframes ghBlink{
+      0%,100%{
+        box-shadow:0 0 20px rgba(255,212,0,.16),0 10px 35px rgba(0,0,0,.72);
+      }
+      50%{
+        box-shadow:0 0 42px rgba(255,212,0,.44),0 0 80px rgba(255,212,0,.10);
+      }
+    }
+
+    @keyframes ghCoreBlink{
+      0%,100%{
+        opacity:.72;
+        box-shadow:0 0 15px var(--yellow),0 0 28px rgba(255,212,0,.22);
+      }
+      50%{
+        opacity:1;
+        box-shadow:0 0 24px var(--yellow),0 0 58px rgba(255,212,0,.48);
+      }
+    }
+
     /* El modo diagnóstico ?log=1 sigue disponible */
     body.log{
       display:block;
@@ -397,9 +486,69 @@
 
   <div id="footer">PERRUNOGT // GOLDHEN HOST</div>
 
-  <!-- Misma carga del jb.js original -->
-  <script type="module">
-    import "./jb.js?v=19";
+  <!--
+    Comprobación previa. GoldHEN expone BinLoader en 127.0.0.1:9090.
+    Si /status responde correctamente, no se vuelve a ejecutar jb.js.
+  -->
+  <script>
+    (function () {
+      var started = false;
+      var finished = false;
+
+      function startExploit() {
+        if (started) return;
+        started = true;
+
+        var s = document.createElement("script");
+        s.type = "module";
+        s.textContent = 'import "./jb.js?v=19";';
+        document.body.appendChild(s);
+      }
+
+      function showAlreadyActive() {
+        document.body.classList.add("already-active");
+
+        var msg = document.getElementById("msg");
+        if (msg) msg.textContent = "GOLDHEN YA ESTA ACTIVADO";
+
+        var title = document.getElementById("exploit-title");
+        if (title) title.textContent = "GOLDHEN YA ESTA ACTIVADO";
+      }
+
+      function finish(active) {
+        if (finished) return;
+        finished = true;
+
+        if (active) {
+          showAlreadyActive();
+        } else {
+          startExploit();
+        }
+      }
+
+      var xhr = new XMLHttpRequest();
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        finish(xhr.status >= 200 && xhr.status < 300);
+      };
+
+      xhr.onerror = function () {
+        finish(false);
+      };
+
+      xhr.ontimeout = function () {
+        finish(false);
+      };
+
+      try {
+        xhr.open("GET", "http://127.0.0.1:9090/status", true);
+        xhr.timeout = 400;
+        xhr.send(null);
+      } catch (e) {
+        finish(false);
+      }
+    })();
   </script>
 </body>
 </html>
