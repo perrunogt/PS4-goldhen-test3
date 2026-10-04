@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" manifest="cache.appcache">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HOST:PERRUNOGT</title>
+<style>
+  :root{
+    --bg:#020604;
+    --panel:rgba(2,12,7,.96);
+    --green:#00ff88;
+    --text:#dfffea;
+    --muted:#537565;
+    --red:#ff405d;
+  }
+  *{box-sizing:border-box}
+  html,body{width:100%;height:100%;margin:0;padding:0}
+  body{
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 50% 50%,rgba(0,255,136,.08),transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font:15px/1.5 monospace,sans-serif;
+  }
+  body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(rgba(0,255,136,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,255,136,.025) 1px,transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;
+  }
+  #panel{
+    position:relative;
+    width:min(86vw,680px);
+    padding:30px 34px;
+    background:var(--panel);
+    border:1px solid rgba(0,255,136,.28);
+    border-radius:18px;
+    box-shadow:
+      0 0 50px rgba(0,255,136,.08),
+      0 25px 70px rgba(0,0,0,.75),
+      inset 0 0 30px rgba(0,255,136,.025);
+    z-index:2;
+  }
+  #panel::before{
+    content:"PERRUNOGT // PS4 HOST";
+    display:block;
+    margin-bottom:18px;
+    padding-bottom:12px;
+    color:var(--green);
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.16em;
+    border-bottom:1px solid rgba(0,255,136,.18);
+    text-shadow:0 0 10px rgba(0,255,136,.5);
+  }
+  #brand{
+    text-align:center;
+    margin-bottom:20px;
+    color:#fff;
+    font-size:clamp(20px,4vw,28px);
+    font-weight:800;
+    letter-spacing:.13em;
+    text-shadow:0 0 10px rgba(0,255,136,.65);
+  }
+  #brand small{
+    display:block;
+    margin-top:6px;
+    color:var(--muted);
+    font-size:9px;
+    font-weight:400;
+    letter-spacing:.32em;
+  }
+  #state{font-size:18px;font-weight:700;margin:0 0 7px}
+  #det{font-size:12px;color:#8ba899;margin:0 0 4px}
+  #det b{color:var(--text)}
+  #cache{min-height:18px;color:#9cb4a7;font-size:12px;margin-top:6px}
+  #cache.cacheok{color:var(--green);text-shadow:0 0 7px rgba(0,255,136,.35)}
+  #bar{
+    width:100%;
+    height:4px;
+    margin-top:14px;
+    overflow:hidden;
+    background:rgba(255,255,255,.06);
+    border-radius:4px;
+  }
+  #barFill{
+    display:block;
+    width:0%;
+    height:100%;
+    background:var(--green);
+    box-shadow:0 0 12px rgba(0,255,136,.65);
+    transition:width .08s linear;
+  }
+  #footer{
+    position:fixed;
+    bottom:24px;
+    color:rgba(140,210,170,.42);
+    font-size:9px;
+    letter-spacing:.22em;
+    z-index:2;
+  }
+  #footer::before{content:"◆ ";color:var(--green)}
+  .ok{color:var(--green)}
+  .bad{color:var(--red)}
+  .warn{color:#e3b341}
+  @media(max-width:600px){
+    #panel{width:88vw;padding:25px 20px}
+    #state{font-size:16px}
+    #footer{bottom:16px;font-size:8px}
+  }
+</style>
+</head>
+<body>
+  <div id="panel">
+    <div id="brand">
+      HOST:PERRUNOGT
+      <small>PS4 GOLDHEN HOST</small>
+    </div>
+    <div id="wrap">
+      <div id="state">detecting firmware...</div>
+      <div id="det"></div>
+      <div id="cache"></div>
+      <div id="bar"><span id="barFill"></span></div>
+    </div>
+  </div>
+
+  <div id="footer">PERRUNOGT // CACHE SYSTEM</div>
+
+<script>
+(function () {
+    var stateEl = document.getElementById("state");
+    var detEl = document.getElementById("det");
+    var cacheEl = document.getElementById("cache");
+    var barFill = document.getElementById("barFill");
+
+    function setState(t, c) {
+        stateEl.textContent = t;
+        stateEl.className = c || "";
+    }
+
+    function setCache(t, ok) {
+        cacheEl.textContent = t;
+        cacheEl.className = ok ? "cacheok" : "";
+
+        var m = /(\d+)%/.exec(t);
+        if (m) {
+            var pct = Math.max(0, Math.min(100, parseInt(m[1], 10)));
+            barFill.style.width = pct + "%";
+        } else if (ok) {
+            barFill.style.width = "100%";
+        }
+    }
+
+    var queryString = location.search || "";
+
+    // Mantener sincronizado con ps4_offsets.js.
+    var SUPPORTED = { 1302:1, 1304:1, 1350:1, 1352:1 };
+
+    var key = null, fwnum = null;
+    var m = /PlayStation\s+4[\/ ](\d+)\.(\d+)/.exec(navigator.userAgent);
+    if (m) {
+        var ms = parseInt(m[2], 16).toString(16);
+        if (ms.length < 2) ms = "0" + ms;
+        key = m[1] + "." + ms;
+        fwnum = parseInt(m[1], 10) * 100 + parseInt(ms, 10);
+    }
+
+    var forced = /(?:\?|&)force=1(?:&|$)/.test(queryString);
+    var supported = forced || (fwnum !== null && SUPPORTED[fwnum] === 1);
+
+    detEl.innerHTML =
+        "firmware <b>" + (key || "unknown") + "</b>" +
+        (supported ? " &middot; <b>supported</b>"
+                   : " &middot; not in this build's kernel table");
+
+    var target = "jb.html" + location.search;
+
+    function go() {
+        setState("loading jailbreak...", "warn");
+        location.replace(target);
+    }
+
+    function waitForTap(msg, action) {
+        setState(msg, "warn");
+        function fire() {
+            window.removeEventListener("click", fire);
+            window.removeEventListener("keydown", fire);
+            action();
+        }
+        window.addEventListener("click", fire);
+        window.addEventListener("keydown", fire);
+    }
+
+    if (!supported) {
+        setState("UNSUPPORTED FIRMWARE", "bad");
+        waitForTap(
+            "UNSUPPORTED (" + (key || "unknown") + ") -- press X or tap to run anyway",
+            go
+        );
+        return;
+    }
+
+    var ac = window.applicationCache;
+
+    if (!ac || !document.documentElement.hasAttribute("manifest")) {
+        go();
+    } else if (!navigator.onLine) {
+        setCache("offline -- from cache", true);
+        go();
+    } else if (ac.status === ac.IDLE) {
+        setCache("cached", true);
+        go();
+    } else if (ac.status === ac.UPDATEREADY) {
+        try { ac.swapCache(); } catch (e) {}
+        setCache("update downloaded", true);
+        waitForTap(
+            "UPDATE READY -- press X or tap to reload & run",
+            function () { location.reload(); }
+        );
+    } else {
+        setCache("checking cache...");
+
+        ac.addEventListener("downloading", function () {
+            setCache("Descargando cache...");
+        }, false);
+
+        ac.addEventListener("progress", function (e) {
+            if (e && e.total) {
+                setCache(
+                    "Descargando cache ... " +
+                    Math.round((e.loaded / e.total) * 100) +
+                    "%"
+                );
+            }
+        }, false);
+
+        ac.addEventListener("cached", function () {
+            setCache("cache lista", true);
+            waitForTap("CACHE LISTA -- press X or tap to run", go);
+        }, false);
+
+        ac.addEventListener("updateready", function () {
+            try { ac.swapCache(); } catch (e) {}
+            setCache("update downloaded", true);
+            waitForTap(
+                "UPDATE READY -- press X or tap to reload & run",
+                function () { location.reload(); }
+            );
+        }, false);
+
+        ac.addEventListener("noupdate", function () {
+            setCache("cache lista -- offline ready", true);
+            go();
+        }, false);
+
+        ac.addEventListener("error", function () {
+            setCache("cache unavailable");
+            waitForTap("CACHE FAILED -- press X or tap to run anyway", go);
+        }, false);
+
+        ac.addEventListener("obsolete", function () {
+            setCache("cache obsolete");
+            waitForTap("CACHE OBSOLETE -- press X or tap to run", go);
+        }, false);
+    }
+})();
+</script>
+</body>
+</html>
